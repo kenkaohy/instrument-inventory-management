@@ -7,3 +7,4 @@ pub mod staff;
 pub mod loans;
 pub mod transactions;
 pub mod export;
+pub mod database;

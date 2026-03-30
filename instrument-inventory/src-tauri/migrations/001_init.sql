@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS staff (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     name             TEXT NOT NULL UNIQUE,
     role             TEXT,                        -- optional: e.g. '護理師', '技術員'
+    is_admin         INTEGER NOT NULL DEFAULT 0,  -- 1=admin, 0=regular user
     is_active        INTEGER NOT NULL DEFAULT 1,  -- 1=active, 0=inactive
     created_at       TEXT DEFAULT (datetime('now')),
     deactivated_at   TEXT                         -- set when is_active → 0

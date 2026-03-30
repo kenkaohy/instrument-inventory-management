@@ -315,3 +315,45 @@ pub fn get_staff_loan_history(
     }
     Ok(result)
 }
+
+/// Fetch loan history for a specific instrument.
+#[tauri::command]
+pub fn get_instrument_loan_history(
+    state: State<'_, AppDb>,
+    instrument_id: i64,
+) -> Result<Vec<InstrumentLoanHistory>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+
+    let sql = String::from(
+        "SELECT l.id AS loan_id, s.name AS staff_name, l.quantity, l.issued_date, l.returned_date,
+            CASE WHEN l.returned_date IS NULL THEN '未歸還' ELSE '已歸還' END AS return_status,
+            CAST(julianday(COALESCE(l.returned_date, date('now'))) - julianday(l.issued_date) AS INTEGER) AS days_held,
+            l.notes
+         FROM loans l
+         JOIN staff s ON s.id = l.staff_id
+         WHERE l.instrument_id = ?
+         ORDER BY l.issued_date DESC"
+    );
+
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([instrument_id], |row| {
+            Ok(InstrumentLoanHistory {
+                loan_id: row.get(0)?,
+                staff_name: row.get(1)?,
+                quantity: row.get(2)?,
+                issued_date: row.get(3)?,
+                returned_date: row.get(4)?,
+                return_status: row.get(5)?,
+                days_held: row.get(6)?,
+                notes: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
+}

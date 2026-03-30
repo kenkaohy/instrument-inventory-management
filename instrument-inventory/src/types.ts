@@ -12,6 +12,7 @@ export interface StaffMember {
   id: number;
   name: string;
   role?: string;
+  is_admin: boolean;
   is_active: boolean;
   created_at?: string;
   deactivated_at?: string;
@@ -65,6 +66,17 @@ export interface StaffLoanHistory {
   category: string;
   instrument_name: string;
   quantity: number;
+  days_held: number;
+  notes?: string;
+}
+
+export interface InstrumentLoanHistory {
+  loan_id: number;
+  staff_name: string;
+  quantity: number;
+  issued_date: string;
+  returned_date?: string;
+  return_status: string;
   days_held: number;
   notes?: string;
 }
@@ -125,11 +137,13 @@ export interface UpdateInstrument {
 export interface NewStaff {
   name: string;
   role?: string;
+  is_admin: boolean;
 }
 
 export interface UpdateStaffPayload {
   name?: string;
   role?: string;
+  is_admin?: boolean;
 }
 
 export interface NewTransaction {

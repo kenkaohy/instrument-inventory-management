@@ -4,17 +4,21 @@ import { useStaff } from '../hooks/useStaff';
 import { useInventory } from '../hooks/useInventory';
 import { issueLoan, returnLoan } from '../api';
 import { ArrowLeftRight, CornerDownRight, CornerUpLeft, Clock, CheckCircle2, AlertTriangle, X } from 'lucide-react';
-import { UnreturnedLoan } from '../types';
+import { StaffMember, UnreturnedLoan } from '../types';
 
-export function Transactions() {
+interface TransactionsProps {
+  currentUser: StaffMember;
+}
+
+export function Transactions({ currentUser }: TransactionsProps) {
   const { unreturnedLoans, transactions, loading, refreshAll } = useTransactions();
   const { staff } = useStaff();
   const { items: inventory, refetch: refetchInventory } = useInventory();
   
-  const [activeTab, setActiveTab] = useState<'unreturned' | 'issue' | 'history'>('unreturned');
+  const [activeTab, setActiveTab] = useState<'issue' | 'return' | 'history'>('issue');
 
   // ── Issue Loan Form State ──
-  const [issueStaffId, setIssueStaffId] = useState<number | ''>('');
+  const [issueStaffId, setIssueStaffId] = useState<number | ''>(currentUser.id);
   const [issueInstrumentId, setIssueInstrumentId] = useState<number | ''>('');
   const [issueQuantity, setIssueQuantity] = useState(1);
   const [issueNotes, setIssueNotes] = useState('');
@@ -47,7 +51,7 @@ export function Transactions() {
       });
       setIssueResult({ success: true, message: '借出登錄成功！' });
       // Reset form
-      setIssueStaffId('');
+      setIssueStaffId(currentUser.id);
       setIssueInstrumentId('');
       setIssueQuantity(1);
       setIssueNotes('');
@@ -84,7 +88,7 @@ export function Transactions() {
 
   const openReturnModal = (loan: UnreturnedLoan) => {
     setReturnModalLoan(loan);
-    setReturnStaffId(loan.staff_id);
+    setReturnStaffId(currentUser.id);
     setReturnDate(new Date().toISOString().split('T')[0]);
     setReturnNotes('');
   };
@@ -103,20 +107,28 @@ export function Transactions() {
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <ArrowLeftRight className="text-emerald-600" /> 出入庫 / 借還管理
+              <ArrowLeftRight className="text-emerald-600" /> 登錄
             </h2>
-            <p className="text-gray-500 mt-1">處理器械的借出、歸還與庫存紀錄</p>
+            <p className="text-gray-500 mt-1">處理器械的借出與歸還紀錄</p>
           </div>
         </div>
         
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab('unreturned')}
-            className={`px-6 py-3 font-medium text-sm flex items-center gap-2 transition-colors border-b-2 ${
-              activeTab === 'unreturned' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            onClick={() => { setActiveTab('issue'); setIssueResult(null); }}
+            className={`px-8 py-3 font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 flex-1 sm:flex-none ${
+              activeTab === 'issue' ? 'border-emerald-500 text-emerald-600 bg-emerald-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <CornerUpLeft size={16} /> 待歸還
+            <CornerDownRight size={16} /> 借出
+          </button>
+          <button
+            onClick={() => setActiveTab('return')}
+            className={`px-8 py-3 font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 flex-1 sm:flex-none ${
+              activeTab === 'return' ? 'border-emerald-500 text-emerald-600 bg-emerald-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <CornerUpLeft size={16} /> 歸還
             {unreturnedLoans.length > 0 && (
               <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 font-semibold">
                 {unreturnedLoans.length}
@@ -124,17 +136,9 @@ export function Transactions() {
             )}
           </button>
           <button
-            onClick={() => { setActiveTab('issue'); setIssueResult(null); }}
-            className={`px-6 py-3 font-medium text-sm flex items-center gap-2 transition-colors border-b-2 ${
-              activeTab === 'issue' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <CornerDownRight size={16} /> 借出登錄
-          </button>
-          <button
             onClick={() => setActiveTab('history')}
-            className={`px-6 py-3 font-medium text-sm flex items-center gap-2 transition-colors border-b-2 ${
-              activeTab === 'history' ? 'border-emerald-500 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`px-8 py-3 font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 flex-1 sm:flex-none ${
+              activeTab === 'history' ? 'border-emerald-500 text-emerald-600 bg-emerald-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
             <Clock size={16} /> 歷史紀錄
@@ -145,8 +149,8 @@ export function Transactions() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[400px]">
         {loading && <div className="p-12 text-center text-gray-500">載入中...</div>}
         
-        {/* ─── Tab: Unreturned Loans ─── */}
-        {!loading && activeTab === 'unreturned' && (
+        {/* ─── Tab: Return Loans (Unreturned) ─── */}
+        {!loading && activeTab === 'return' && (
           <>
             {overdueCount > 0 && (
               <div className="px-6 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2 text-sm text-red-700 font-medium">
@@ -311,7 +315,7 @@ export function Transactions() {
               <div className="pt-4 flex justify-end gap-3">
                 <button 
                   onClick={() => {
-                    setIssueStaffId('');
+                    setIssueStaffId(currentUser.id);
                     setIssueInstrumentId('');
                     setIssueQuantity(1);
                     setIssueNotes('');

@@ -4,7 +4,7 @@ import {
   UnreturnedLoan, StaffLoanHistory, StaffLoanSummary,
   DeactivationCheck, InventoryFilter, TransactionFilter,
   NewInstrument, UpdateInstrument, NewStaff, UpdateStaffPayload,
-  NewTransaction, NewLoan, ReturnLoanPayload, ExportRequest, LoanFilter
+  NewTransaction, NewLoan, ReturnLoanPayload, ExportRequest, LoanFilter, InstrumentLoanHistory
 } from './types';
 
 // @ts-ignore
@@ -24,9 +24,9 @@ const MOCK_INVENTORY: InstrumentRow[] = [
 ];
 
 const MOCK_STAFF: StaffMember[] = [
-  { id: 1, name: 'Dr. 王醫師', is_active: true },
-  { id: 2, name: 'Dr. 林醫師', is_active: true },
-  { id: 3, name: '陳護理師', is_active: true },
+  { id: 1, name: 'Dr. 王醫師', is_admin: true, is_active: true },
+  { id: 2, name: 'Dr. 林醫師', is_admin: false, is_active: true },
+  { id: 3, name: '陳護理師', is_admin: false, is_active: true },
 ];
 
 const MOCK_STAFF_SUMMARY: StaffLoanSummary[] = [
@@ -91,6 +91,13 @@ export const getStaffLoanHistory = async (filter: LoanFilter = {}) => {
   if (!isTauri) return [];
   return invoke<StaffLoanHistory[]>('get_staff_loan_history', { filter });
 };
+export const getInstrumentLoanHistory = async (instrumentId: number) => {
+  if (!isTauri) return [];
+  return invoke<InstrumentLoanHistory[]>('get_instrument_loan_history', { instrument_id: instrumentId });
+};
 
 // ── Export API ──
 export const exportCsv = (payload: ExportRequest) => invoke<string>('export_csv', { payload });
+
+// ── Database API ──
+export const importDatabase = (sourcePath: string) => invoke<void>('import_database', { source_path: sourcePath });

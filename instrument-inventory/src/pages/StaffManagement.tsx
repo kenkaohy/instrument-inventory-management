@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStaff } from '../hooks/useStaff';
-import { Users, UserPlus, AlertTriangle, X, CheckCircle2 } from 'lucide-react';
-import { createStaff } from '../api';
+import { Users, UserPlus, AlertTriangle, X, CheckCircle2, ShieldCheck, PowerOff, Power } from 'lucide-react';
+import { createStaff, updateStaff, deactivateStaff, reactivateStaff } from '../api';
 
 export function StaffManagement() {
   const { staff, loanSummary, loading, error, refetch } = useStaff();
@@ -11,6 +11,7 @@ export function StaffManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('');
+  const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -20,10 +21,11 @@ export function StaffManagement() {
     setIsSubmitting(true);
     setSubmitResult(null);
     try {
-      await createStaff({ name: newName.trim(), role: newRole.trim() || undefined });
+      await createStaff({ name: newName.trim(), role: newRole.trim() || undefined, is_admin: newIsAdmin });
       setSubmitResult({ success: true, message: '人員新增成功！' });
       setNewName('');
       setNewRole('');
+      setNewIsAdmin(false);
       await refetch();
       setTimeout(() => {
         setIsModalOpen(false);
@@ -33,6 +35,30 @@ export function StaffManagement() {
       setSubmitResult({ success: false, message: `新增失敗: ${err}` });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleToggleAdmin = async (id: number, currentName: string, currentRole: string | undefined, currentAdmin: boolean) => {
+    try {
+      await updateStaff(id, { name: currentName, role: currentRole, is_admin: !currentAdmin });
+      await refetch();
+    } catch(err) {
+      console.error(err);
+      alert(`管理員權限切換失敗: ${err}`);
+    }
+  };
+
+  const handleToggleActive = async (id: number, currentActive: boolean) => {
+    try {
+      if (currentActive) {
+        await deactivateStaff(id);
+      } else {
+        await reactivateStaff(id);
+      }
+      await refetch();
+    } catch(err) {
+      console.error(err);
+      alert(`狀態切換失敗: ${err}`);
     }
   };
 
@@ -98,12 +124,46 @@ export function StaffManagement() {
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                       {person.role || '員工'}
                     </span>
+                    {person.is_admin && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800 gap-1">
+                        <ShieldCheck size={12} /> 管理員
+                      </span>
+                    )}
                     {!person.is_active && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
                         已停用
                       </span>
                     )}
                   </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <label className="flex flex-col items-center cursor-pointer group">
+                    <div className="relative inline-block w-8 h-4 transition duration-200 ease-in-out rounded-full">
+                      <input 
+                        type="checkbox" 
+                        className="peer absolute w-0 h-0 opacity-0"
+                        checked={person.is_admin}
+                        onChange={() => handleToggleAdmin(person.id, person.name, person.role, person.is_admin)}
+                      />
+                      <span className={`block w-8 h-4 rounded-full transition-colors ${person.is_admin ? 'bg-emerald-500' : 'bg-gray-200'}`}></span>
+                      <span className={`absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform peer-checked:translate-x-4 shadow-sm`}></span>
+                    </div>
+                    <span className="text-[10px] text-gray-400 font-medium mt-1 group-hover:text-emerald-600">管理員</span>
+                  </label>
+                  
+                  <div className="w-px h-8 bg-gray-100 mx-1"></div>
+
+                  <button 
+                    onClick={() => handleToggleActive(person.id, person.is_active)}
+                    className={`flex flex-col items-center justify-center p-1 rounded transition-colors ${
+                      person.is_active ? 'text-gray-400 hover:text-red-500 hover:bg-red-50' : 'text-red-500 hover:text-emerald-500 hover:bg-emerald-50'
+                    }`}
+                    title={person.is_active ? "禁用" : "啟用"}
+                  >
+                    {person.is_active ? <PowerOff size={18} /> : <Power size={18} />}
+                    <span className="text-[10px] font-medium mt-0.5">{person.is_active ? '禁用' : '啟用'}</span>
+                  </button>
                 </div>
               </div>
 
@@ -182,6 +242,18 @@ export function StaffManagement() {
                   placeholder="例如: 醫師、護理師 (選填)"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"
                 />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={newIsAdmin}
+                    onChange={(e) => setNewIsAdmin(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">設為管理員 (可進行系統設定與導出/匯入)</span>
+                </label>
               </div>
             </div>
 

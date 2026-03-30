@@ -29,10 +29,10 @@ pub fn get_staff(
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
     let sql = if active_only.unwrap_or(false) {
-        "SELECT id, name, role, is_active, created_at, deactivated_at
+        "SELECT id, name, role, is_admin, is_active, created_at, deactivated_at
          FROM staff WHERE is_active = 1 ORDER BY name"
     } else {
-        "SELECT id, name, role, is_active, created_at, deactivated_at
+        "SELECT id, name, role, is_admin, is_active, created_at, deactivated_at
          FROM staff ORDER BY is_active DESC, name"
     };
 
@@ -43,9 +43,10 @@ pub fn get_staff(
                 id: row.get(0)?,
                 name: row.get(1)?,
                 role: row.get(2)?,
-                is_active: row.get::<_, i64>(3)? == 1,
-                created_at: row.get(4)?,
-                deactivated_at: row.get(5)?,
+                is_admin: row.get::<_, i64>(3)? == 1,
+                is_active: row.get::<_, i64>(4)? == 1,
+                created_at: row.get(5)?,
+                deactivated_at: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -67,8 +68,8 @@ pub fn create_staff(
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO staff (name, role, is_active) VALUES (?, ?, 1)",
-        rusqlite::params![payload.name, payload.role],
+        "INSERT INTO staff (name, role, is_admin, is_active) VALUES (?, ?, ?, 1)",
+        rusqlite::params![payload.name, payload.role, if payload.is_admin { 1 } else { 0 }],
     )
     .map_err(|e| format!("Failed to create staff: {}", e))?;
 
@@ -94,6 +95,10 @@ pub fn update_staff(
     if let Some(ref role) = payload.role {
         updates.push("role = ?");
         params.push(Box::new(role.clone()));
+    }
+    if let Some(is_admin) = payload.is_admin {
+        updates.push("is_admin = ?");
+        params.push(Box::new(if is_admin { 1 } else { 0 }));
     }
 
     if updates.is_empty() {

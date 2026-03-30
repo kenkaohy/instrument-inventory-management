@@ -1,24 +1,26 @@
-import { PackageSearch, ArrowLeftRight, Users, Download, FlaskConical } from 'lucide-react';
+import { PackageSearch, ArrowLeftRight, Users, Download, FlaskConical, LogOut } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { StaffMember } from '../types';
 
 export type ViewType = 'inventory' | 'transactions' | 'staff' | 'export';
 
 interface SidebarProps {
   activeView: ViewType;
   onChangeView: (view: ViewType) => void;
+  currentUser: StaffMember;
+  onLogout: () => void;
 }
 
 export function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-export function Sidebar({ activeView, onChangeView }: SidebarProps) {
+export function Sidebar({ activeView, onChangeView, currentUser, onLogout }: SidebarProps) {
   const navItems = [
+    { id: 'transactions', label: '登錄', icon: ArrowLeftRight },
     { id: 'inventory', label: '庫存總覽', icon: PackageSearch },
-    { id: 'transactions', label: '出入庫 / 借還管理', icon: ArrowLeftRight },
     { id: 'staff', label: '人員管理', icon: Users },
-    { id: 'export', label: '報表匯出', icon: Download },
   ] as const;
 
   return (
@@ -52,10 +54,34 @@ export function Sidebar({ activeView, onChangeView }: SidebarProps) {
             </button>
           );
         })}
+        
+        {/* Only show Database Management if user is admin */}
+        {currentUser.is_admin && (
+            <button
+              onClick={() => onChangeView('export')}
+              className={cn(
+                "w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 text-left font-medium text-amber-700 hover:bg-amber-50",
+                activeView === 'export' ? "bg-amber-100 shadow-sm ring-1 ring-amber-500/20" : ""
+              )}
+            >
+              <Download size={20} className={activeView === 'export' ? "text-amber-700" : "text-amber-600"} />
+              <span>資料庫管理</span>
+            </button>
+        )}
       </nav>
       
-      <div className="p-4 m-4 rounded-xl bg-gray-50 border border-gray-100 text-xs text-gray-500 text-center">
-        v0.1.0 Offline Mode
+      <div className="p-4 mt-auto border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-gray-900">{currentUser.name}</span>
+          <span className="text-xs text-gray-500">{currentUser.is_admin ? '管理員' : (currentUser.role || '一般人員')}</span>
+        </div>
+        <button 
+          onClick={onLogout}
+          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          title="登出"
+        >
+          <LogOut size={18} />
+        </button>
       </div>
     </div>
   );

@@ -55,6 +55,7 @@ pub struct UpdateInstrument {
 pub struct NewStaff {
     pub name: String,
     pub role: Option<String>,
+    pub is_admin: bool,
 }
 
 /// Payload for updating a staff member
@@ -62,6 +63,7 @@ pub struct NewStaff {
 pub struct UpdateStaffPayload {
     pub name: Option<String>,
     pub role: Option<String>,
+    pub is_admin: Option<bool>,
 }
 
 /// Payload for recording a non-loan transaction (一般出入庫)
@@ -128,6 +130,7 @@ pub struct StaffMember {
     pub id: i64,
     pub name: String,
     pub role: Option<String>,
+    pub is_admin: bool,
     pub is_active: bool,
     pub created_at: Option<String>,
     pub deactivated_at: Option<String>,
@@ -189,6 +192,19 @@ pub struct StaffLoanHistory {
     pub category: String,
     pub instrument_name: String,
     pub quantity: i64,
+    pub days_held: i64,
+    pub notes: Option<String>,
+}
+
+/// Instrument loan history row
+#[derive(Debug, Serialize)]
+pub struct InstrumentLoanHistory {
+    pub loan_id: i64,
+    pub staff_name: String,
+    pub quantity: i64,
+    pub issued_date: String,
+    pub returned_date: Option<String>,
+    pub return_status: String,
     pub days_held: i64,
     pub notes: Option<String>,
 }

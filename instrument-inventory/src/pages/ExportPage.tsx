@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, AlertTriangle, Package, Clock, Users, CheckCircle2 } from 'lucide-react';
-import { exportCsv } from '../api';
+import { Download, FileSpreadsheet, AlertTriangle, Package, Clock, Users, CheckCircle2, Database, Upload } from 'lucide-react';
+import { exportCsv, importDatabase } from '../api';
 import { useStaff } from '../hooks/useStaff';
 import { ExportRequest } from '../types';
 
@@ -60,7 +60,9 @@ export function ExportPage() {
   const [endDate, setEndDate] = useState('');
   const [selectedStaffId, setSelectedStaffId] = useState<number | undefined>();
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const selectedOption = EXPORT_OPTIONS.find(o => o.id === selectedType)!;
 
@@ -117,14 +119,63 @@ export function ExportPage() {
     return true;
   };
 
+  const handleImport = async () => {
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      if (!isTauri) {
+        await new Promise(r => setTimeout(r, 1000));
+        setImportResult({ success: true, message: '已匯入資料庫（瀏覽器模擬模式）' });
+        setImporting(false);
+        return;
+      }
+
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const sourcePath = await open({
+        multiple: false,
+        filters: [{ name: 'SQLite Database', extensions: ['db', 'sqlite', 'sqlite3'] }],
+      });
+
+      if (!sourcePath || typeof sourcePath !== 'string') {
+        setImporting(false);
+        return; // User cancelled
+      }
+
+      const confirmed = window.confirm('警告：匯入資料庫將會完全覆蓋目前的資料！\n在執行前請確認您已備份目前的資料。\n確定要繼續嗎？');
+      if (!confirmed) {
+        setImporting(false);
+        return;
+      }
+
+      await importDatabase(sourcePath);
+      setImportResult({ success: true, message: '資料庫匯入成功！系統將在3秒後重新載入。' });
+      
+      // Reload application to reflect new database
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+
+    } catch (err) {
+      setImportResult({ success: false, message: `匯入失敗: ${err}` });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-12">
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col gap-2">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Download className="text-emerald-600" /> 報表匯出
+          <Database className="text-emerald-600" /> 資料庫管理
         </h2>
-        <p className="text-gray-500 mt-1">選擇匯出類型，將資料儲存為 CSV 檔案（Excel 可直接開啟）</p>
+        <p className="text-gray-500">在此匯出系統紀錄的報表，以及管理系統資料庫備份與還原。</p>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <Download size={20} className="text-gray-600" />
+        <h3 className="text-lg font-semibold text-gray-900">報表匯出</h3>
       </div>
 
       {/* Export Type Selection */}
@@ -258,6 +309,57 @@ export function ExportPage() {
             ) : (
               <>
                 <Download size={16} /> 匯出 CSV
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6 space-y-5">
+        <h3 className="text-lg font-semibold text-red-700 flex items-center gap-2 border-b border-red-100 pb-4">
+          <Upload size={20} className="text-red-600" /> 匯入資料庫 (管理員功能)
+        </h3>
+        
+        <div className="bg-red-50 rounded-lg p-4 border border-red-100 flex items-start gap-3">
+          <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
+          <div className="text-sm text-red-800 space-y-1">
+            <p className="font-semibold">危險操作警告</p>
+            <p>匯入新的資料庫檔案將會 <span className="font-bold underline">完全覆蓋並刪除目前的系統資料</span>。</p>
+            <p>請確認匯入的檔案是本系統所產生的 SQLite (.db) 備份檔，並且在執行前確認目前資料已安全備份。</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex-1">
+            {importResult && (
+              <div className={`flex items-center gap-2 text-sm font-medium ${importResult.success ? 'text-emerald-600' : 'text-red-600'}`}>
+                {importResult.success ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                {importResult.message}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleImport}
+            disabled={importing}
+            className={`
+              flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm
+              ${importing
+                ? 'bg-red-200 text-red-400 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700 text-white hover:shadow-md active:scale-[0.98]'
+              }
+            `}
+          >
+            {importing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                處理中...
+              </>
+            ) : (
+              <>
+                <Upload size={16} /> 匯入 SQLite 資料庫
               </>
             )}
           </button>

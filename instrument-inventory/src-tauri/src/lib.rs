@@ -16,6 +16,7 @@ use commands::staff::*;
 use commands::loans::*;
 use commands::transactions::*;
 use commands::export::*;
+use commands::database::*;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -61,11 +62,13 @@ pub fn run() {
             return_loan,
             get_unreturned_loans,
             get_staff_loan_history,
+            get_instrument_loan_history,
             // ── Transaction commands ──
             record_transaction,
             get_transactions,
             // ── Export ──
             export_csv,
+            import_database,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -71,6 +71,21 @@ pub fn init_db(app_data_dir: PathBuf) -> Result<AppDb, String> {
         println!("✅ Database schema initialized");
     } else {
         println!("✅ Database already initialized");
+        // Migration: add is_admin to staff if it doesn't exist
+        let column_exists: bool = conn
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('staff') WHERE name='is_admin'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|count| count > 0)
+            .unwrap_or(false);
+
+        if !column_exists {
+            conn.execute_batch("ALTER TABLE staff ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;")
+                .map_err(|e| format!("Failed to run migration for is_admin: {}", e))?;
+            println!("✅ Database migration applied (added is_admin to staff)");
+        }
     }
 
     Ok(AppDb {
